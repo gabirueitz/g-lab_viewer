@@ -131,13 +131,19 @@
       </div>
     </div>
 
-    <!-- Controles Flutuantes da Câmera (Direita Inferior) -->
+    <!-- Controles Flutuantes (Direita Inferior): Centralizar, Auto-giro e Rotação 90° -->
     <div class="absolute bottom-28 right-4 z-20 flex flex-col gap-2">
-      <button id="btnResetView" title="Centralizar Peça" class="w-10 h-10 rounded-xl bg-slate-900/90 backdrop-blur border border-slate-700/80 hover:border-cyan-400 text-slate-200 hover:text-white shadow-lg flex items-center justify-center transition active:scale-95">
+      <button id="btnResetView" title="Centralizar Câmera" class="w-10 h-10 rounded-xl bg-slate-900/90 backdrop-blur border border-slate-700/80 hover:border-cyan-400 text-slate-200 hover:text-white shadow-lg flex items-center justify-center transition active:scale-95">
         <i data-lucide="crosshair" class="w-4 h-4"></i>
       </button>
       <button id="btnAutoRotate" title="Giro Automático" class="w-10 h-10 rounded-xl bg-slate-900/90 backdrop-blur border border-slate-700/80 hover:border-cyan-400 text-slate-200 hover:text-white shadow-lg flex items-center justify-center transition active:scale-95">
         <i data-lucide="rotate-3d" class="w-4 h-4"></i>
+      </button>
+      <button id="btnRotateX" title="Girar Peça 90° (Eixo X)" class="w-10 h-10 rounded-xl bg-slate-900/90 backdrop-blur border border-slate-700/80 hover:border-cyan-400 text-xs font-mono font-bold text-slate-300 hover:text-cyan-400 shadow-lg flex items-center justify-center transition active:scale-95">
+        X90°
+      </button>
+      <button id="btnRotateZ" title="Girar Peça 90° (Eixo Z)" class="w-10 h-10 rounded-xl bg-slate-900/90 backdrop-blur border border-slate-700/80 hover:border-cyan-400 text-xs font-mono font-bold text-slate-300 hover:text-cyan-400 shadow-lg flex items-center justify-center transition active:scale-95">
+        Z90°
       </button>
     </div>
 
@@ -145,7 +151,7 @@
     <div class="absolute bottom-4 left-0 right-0 z-20 flex justify-center px-4 pointer-events-none">
       <div class="pointer-events-auto bg-slate-950/85 backdrop-blur-md border border-slate-800/90 rounded-2xl p-2 shadow-2xl max-w-full overflow-hidden">
         <div class="flex items-center gap-1.5 overflow-x-auto hide-scrollbar px-1 py-0.5" id="colorPaletteContainer">
-          <!-- Botões de Cores gerados via JS -->
+          <!-- Botões de Cores -->
         </div>
       </div>
     </div>
@@ -159,7 +165,7 @@
       <p id="loadingText" class="text-xs font-mono text-slate-300">Carregando geometria...</p>
     </div>
 
-    <!-- Mensagem de Boas-Vindas (Quando nenhum modelo foi solicitado via URL) -->
+    <!-- Mensagem de Boas-Vindas -->
     <div id="welcomeOverlay" class="absolute inset-0 z-30 flex items-center justify-center p-4">
       <div class="bg-slate-900/90 border border-slate-800 backdrop-blur-md rounded-2xl max-w-md w-full p-6 text-center shadow-2xl">
         <div class="w-12 h-12 rounded-xl bg-cyan-950/60 border border-cyan-800/40 text-cyan-400 flex items-center justify-center mx-auto mb-3">
@@ -183,7 +189,7 @@
     </div>
   </main>
 
-  <!-- Modal: Gerador de Links para Clientes -->
+  <!-- Modal: Gerador de Links -->
   <div id="linkModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl relative">
       <button id="btnCloseLinkModal" class="absolute top-4 right-4 text-slate-400 hover:text-white">
@@ -208,7 +214,7 @@
             <span class="absolute left-3 top-2.5 text-xs text-slate-500 font-mono">Modelos/</span>
             <input id="inputFileName" type="text" placeholder="engrenagem.stl" class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl pl-20 pr-4 py-2 text-xs font-mono text-white placeholder-slate-600 outline-none">
           </div>
-          <p class="text-[10px] text-slate-500 mt-1">Exemplo: se o arquivo for <span class="text-slate-400 font-mono">Modelos/suporte.stl</span>, digite apenas <span class="text-slate-400 font-mono">suporte</span> ou <span class="text-slate-400 font-mono">suporte.stl</span>.</p>
+          <p class="text-[10px] text-slate-500 mt-1">Exemplo: se o arquivo for <span class="text-slate-400 font-mono">Modelos/suporte.stl</span>, digite apenas <span class="text-slate-400 font-mono">suporte</span>.</p>
         </div>
 
         <div>
@@ -232,10 +238,8 @@
   </div>
 
   <script>
-    // Inicialização de Ícones
     lucide.createIcons();
 
-    // Paleta de Cores Técnicas
     const MATERIALS = [
       { name: 'Cinza Mecânico', color: 0x8a9096, roughness: 0.45, metalness: 0.15 },
       { name: 'Chumbo Grafite', color: 0x383e45, roughness: 0.40, metalness: 0.25 },
@@ -257,7 +261,7 @@
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x05070c);
 
-    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 2000);
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 2500);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -269,7 +273,7 @@
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
-    // Iluminação de Estúdio
+    // Iluminação
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
 
@@ -285,33 +289,27 @@
     rimLight.position.set(0, -200, -200);
     scene.add(rimLight);
 
-    // Grid de Chão Sutil
+    // Grid de Chão
     const grid = new THREE.GridHelper(500, 50, 0x1e293b, 0x0f172a);
     grid.position.y = 0;
     scene.add(grid);
 
-    // Loop de Animação
     function animate() {
       requestAnimationFrame(animate);
-      if (isAutoRotating) {
-        controls.autoRotate = true;
-        controls.autoRotateSpeed = 2.0;
-      } else {
-        controls.autoRotate = false;
-      }
+      controls.autoRotate = isAutoRotating;
+      if (isAutoRotating) controls.autoRotateSpeed = 2.0;
       controls.update();
       renderer.render(scene, camera);
     }
     animate();
 
-    // Redimensionamento
     window.addEventListener('resize', () => {
       camera.aspect = container.clientWidth / container.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
     });
 
-    // Renderizar Seletor de Cores na UI
+    // Seletor de Cores
     const paletteContainer = document.getElementById('colorPaletteContainer');
     MATERIALS.forEach((mat, idx) => {
       const btn = document.createElement('button');
@@ -328,7 +326,6 @@
       currentMaterialIndex = index;
       const matConfig = MATERIALS[index];
       
-      // Atualizar destaque visual nos botões
       Array.from(paletteContainer.children).forEach((el, i) => {
         if (i === index) {
           el.classList.add('border-cyan-400', 'scale-105');
@@ -347,16 +344,35 @@
       }
     }
 
-    // Carregamento de Geometria STL
+    function updateDimensionsAndPosition() {
+      if (!currentMesh) return;
+      
+      const geom = currentMesh.geometry;
+      geom.computeBoundingBox();
+      const bbox = geom.boundingBox;
+      const size = new THREE.Vector3();
+      bbox.getSize(size);
+
+      // Posiciona a base exatamente em cima da grade (Y = 0)
+      currentMesh.position.y = -bbox.min.y;
+
+      // Atualiza cotas: X = largura, Z = profundidade no mundo, Y = altura
+      document.getElementById('dimX').innerText = size.x.toFixed(1);
+      document.getElementById('dimY').innerText = size.z.toFixed(1);
+      document.getElementById('dimZ').innerText = size.y.toFixed(1);
+    }
+
     const stlLoader = new THREE.STLLoader();
 
     function loadStlBuffer(buffer, fileName = 'Modelo') {
       try {
         const geometry = stlLoader.parse(buffer);
         geometry.computeVertexNormals();
+
+        // CORREÇÃO: Rotaciona -90° no eixo X para converter Z-up (CAD/Impressão 3D) para Y-up (Three.js Web)
+        geometry.rotateX(-Math.PI / 2);
         geometry.center();
 
-        // Remover malha anterior se houver
         if (currentMesh) {
           scene.remove(currentMesh);
           currentMesh.geometry.dispose();
@@ -373,34 +389,21 @@
         currentMesh = new THREE.Mesh(geometry, material);
         scene.add(currentMesh);
 
-        // Posicionar sobre a grade
-        geometry.computeBoundingBox();
-        const bbox = geometry.boundingBox;
-        const size = new THREE.Vector3();
-        bbox.getSize(size);
+        updateDimensionsAndPosition();
 
-        currentMesh.position.y = size.y / 2;
-        grid.position.y = 0;
-
-        // Atualizar cotas em mm
-        document.getElementById('dimX').innerText = size.x.toFixed(1);
-        document.getElementById('dimY').innerText = size.z.toFixed(1);
-        document.getElementById('dimZ').innerText = size.y.toFixed(1);
-
-        // Ajustar câmera
+        // Enquadrar câmera
         geometry.computeBoundingSphere();
         const radius = geometry.boundingSphere.radius;
         camera.position.set(radius * 1.8, radius * 1.5, radius * 2.2);
-        controls.target.set(0, size.y / 2, 0);
+        controls.target.set(0, currentMesh.position.y, 0);
         controls.update();
 
-        // Atualizar interface
         document.getElementById('welcomeOverlay').classList.add('hidden');
         document.getElementById('modelStatusTag').classList.remove('opacity-0', 'translate-y-2');
         document.getElementById('dimensionBox').classList.remove('opacity-0', 'translate-y-2');
         document.getElementById('statusFileName').innerText = fileName;
 
-        showToast('Peça carregada com sucesso!', 'check');
+        showToast('Peça carregada!', 'check');
       } catch (err) {
         console.error(err);
         showToast('Falha ao processar arquivo STL.', 'alert-triangle');
@@ -409,7 +412,25 @@
       }
     }
 
-    // Carregar via URL (apontando automaticamente para a pasta Modelos/)
+    // Botões de rotação manual adicional (90 graus)
+    document.getElementById('btnRotateX').onclick = () => {
+      if (!currentMesh) return;
+      currentMesh.geometry.rotateX(Math.PI / 2);
+      currentMesh.geometry.computeVertexNormals();
+      currentMesh.geometry.center();
+      updateDimensionsAndPosition();
+      showToast('Rotacionado 90° em X', 'rotate-cw');
+    };
+
+    document.getElementById('btnRotateZ').onclick = () => {
+      if (!currentMesh) return;
+      currentMesh.geometry.rotateZ(Math.PI / 2);
+      currentMesh.geometry.computeVertexNormals();
+      currentMesh.geometry.center();
+      updateDimensionsAndPosition();
+      showToast('Rotacionado 90° em Z', 'rotate-cw');
+    };
+
     async function loadFromUrl(fileName) {
       showLoading('Buscando arquivo STL...');
       let cleanName = fileName.trim();
@@ -417,18 +438,16 @@
         cleanName += '.stl';
       }
 
-      // Constrói o caminho para a pasta Modelos/
       const primaryUrl = cleanName.startsWith('Modelos/') ? cleanName : `Modelos/${cleanName}`;
 
       try {
         let response = await fetch(primaryUrl);
         if (!response.ok) {
-          // Fallback caso a pasta tenha sido criada em minúsculo
           const fallbackUrl = `modelos/${cleanName.replace('Modelos/', '')}`;
           response = await fetch(fallbackUrl);
         }
 
-        if (!response.ok) throw new Error('Arquivo não encontrado no repositório');
+        if (!response.ok) throw new Error('Arquivo não encontrado');
         
         const buffer = await response.arrayBuffer();
         loadStlBuffer(buffer, cleanName.split('/').pop());
@@ -439,10 +458,9 @@
       }
     }
 
-    // Manipulação de Arquivo Local
     function handleFileSelect(file) {
       if (!file || !file.name.toLowerCase().endsWith('.stl')) {
-        showToast('Por favor, selecione um arquivo .STL válido', 'alert-circle');
+        showToast('Selecione um arquivo .STL válido', 'alert-circle');
         return;
       }
       showLoading('Lendo arquivo local...');
@@ -450,7 +468,7 @@
       reader.onload = (e) => loadStlBuffer(e.target.result, file.name);
       reader.onerror = () => {
         hideLoading();
-        showToast('Erro ao ler arquivo local', 'alert-triangle');
+        showToast('Erro ao ler arquivo', 'alert-triangle');
       };
       reader.readAsArrayBuffer(file);
     }
@@ -458,7 +476,6 @@
     document.getElementById('localFileInput').addEventListener('change', (e) => handleFileSelect(e.target.files[0]));
     document.getElementById('welcomeFileInput').addEventListener('change', (e) => handleFileSelect(e.target.files[0]));
 
-    // Drag and Drop
     window.addEventListener('dragover', (e) => e.preventDefault());
     window.addEventListener('drop', (e) => {
       e.preventDefault();
@@ -467,14 +484,12 @@
       }
     });
 
-    // Controles da Câmera
     document.getElementById('btnResetView').onclick = () => {
       if (currentMesh) {
         currentMesh.geometry.computeBoundingSphere();
         const r = currentMesh.geometry.boundingSphere.radius;
-        const y = currentMesh.position.y;
         camera.position.set(r * 1.8, r * 1.5, r * 2.2);
-        controls.target.set(0, y, 0);
+        controls.target.set(0, currentMesh.position.y, 0);
         controls.update();
       }
     };
@@ -486,7 +501,7 @@
       btnRotate.classList.toggle('border-cyan-400', isAutoRotating);
     };
 
-    // Modal: Gerador de Links
+    // Modal
     const linkModal = document.getElementById('linkModal');
     const inputFileName = document.getElementById('inputFileName');
     const generatedLinkOutput = document.getElementById('generatedLinkOutput');
@@ -518,7 +533,7 @@
     document.getElementById('btnCopyGeneratedLink').onclick = async () => {
       try {
         await navigator.clipboard.writeText(generatedLinkOutput.value);
-        showToast('Link copiado com sucesso!', 'check');
+        showToast('Link copiado!', 'check');
       } catch (err) {
         generatedLinkOutput.select();
         document.execCommand('copy');
@@ -526,7 +541,6 @@
       }
     };
 
-    // Funções de UI (Loading e Toasts)
     function showLoading(msg) {
       document.getElementById('loadingText').innerText = msg;
       const el = document.getElementById('loadingOverlay');
@@ -551,7 +565,6 @@
       }, 3500);
     }
 
-    // Leitura Automática de Parâmetros de URL (?stl=... ou ?peca=...)
     window.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
       const modelParam = params.get('stl') || params.get('peca') || params.get('modelo');
