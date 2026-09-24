@@ -1,762 +1,1236 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR" class="h-full bg-slate-950 text-slate-100">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>G-Lab Studio 3D | Visualizador de Modelos</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>G-Lab Studio 3D | Visualizador de Modelos</title>
 
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              400: '#22d3ee',
-              500: '#06b6d4',
-              600: '#0891b2',
-              glow: 'rgba(6, 182, 212, 0.45)'
-            }
-          }
-        }
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                400: "#22d3ee",
+                500: "#06b6d4",
+                600: "#0891b2",
+                glow: "rgba(6, 182, 212, 0.45)",
+              },
+            },
+          },
+        },
+      };
+    </script>
+
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Three.js (r128), OrbitControls & STLLoader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+
+    <style>
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
       }
-    }
-  </script>
+      .font-mono-tech {
+        font-family: "JetBrains Mono", monospace;
+      }
+      .glass-panel {
+        background: rgba(10, 15, 29, 0.88);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow:
+          0 12px 36px -8px rgba(0, 0, 0, 0.65),
+          0 0 0 1px rgba(6, 182, 212, 0.1);
+      }
+      .glass-input {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .glass-input:focus {
+        border-color: #06b6d4;
+        box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.25);
+      }
+      canvas {
+        outline: none;
+        display: block;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .drag-active {
+        border: 2px dashed #06b6d4 !important;
+        background: rgba(6, 182, 212, 0.08) !important;
+      }
+    </style>
+  </head>
+  <body
+    class="h-full w-full overflow-hidden flex flex-col relative bg-slate-950 text-slate-100"
+  >
+    <!-- Viewport 3D Principal -->
+    <div
+      id="viewport-container"
+      class="absolute inset-0 w-full h-full z-0 cursor-grab active:cursor-grabbing"
+    ></div>
 
-  <!-- Google Fonts: Inter & JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Zona de Drag and Drop Overlay -->
+    <div
+      id="drop-overlay"
+      class="hidden absolute inset-0 z-30 bg-cyan-950/40 backdrop-blur-sm border-4 border-dashed border-cyan-400 m-4 rounded-3xl pointer-events-none flex flex-col items-center justify-center gap-3"
+    >
+      <div class="p-4 bg-cyan-500/20 rounded-2xl text-cyan-400">
+        <svg
+          class="w-10 h-10 animate-bounce"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"
+          ></path>
+        </svg>
+      </div>
+      <span class="text-sm font-bold text-white tracking-wide"
+        >Solte o arquivo .STL para visualizar</span
+      >
+    </div>
 
-  <!-- Three.js (r128), OrbitControls & STLLoader -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <!-- Header Superior Oficial G-Lab Studio 3D -->
+    <header
+      class="absolute top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 z-20 flex items-start justify-between pointer-events-none gap-2"
+    >
+      <!-- Branding da Loja + Status da Peça -->
+      <div
+        class="glass-panel rounded-2xl p-2.5 sm:px-4 sm:py-3 flex items-center gap-3 pointer-events-auto max-w-[78vw] sm:max-w-lg"
+      >
+        <div id="brand-logo-container" class="relative group shrink-0">
+          <div
+            class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-cyan-500 via-sky-600 to-slate-900 p-[1.5px] shadow-lg shadow-cyan-500/20 flex items-center justify-center"
+          >
+            <div
+              class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center overflow-hidden"
+            >
+              <svg
+                class="w-6 h-6 text-cyan-400 drop-shadow-[0_0_6px_rgba(6,182,212,0.8)]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.8"
+                  d="M12 2L3 7l9 5 9-5-9-5z"
+                ></path>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.8"
+                  d="M3 12l9 5 9-5"
+                ></path>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.8"
+                  d="M3 17l9 5 9-5"
+                ></path>
+                <circle
+                  cx="12"
+                  cy="7"
+                  r="1.5"
+                  fill="#22d3ee"
+                  stroke="none"
+                ></circle>
+              </svg>
+            </div>
+          </div>
+        </div>
 
-  <style>
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-    .font-mono-tech {
-      font-family: 'JetBrains Mono', monospace;
-    }
-    .glass-panel {
-      background: rgba(10, 15, 29, 0.85);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(6, 182, 212, 0.08);
-    }
-    .glass-input {
-      background: rgba(15, 23, 42, 0.75);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-    }
-    .glass-input:focus {
-      border-color: #06b6d4;
-      box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.25);
-    }
-    canvas {
-      outline: none;
-      display: block;
-    }
-    /* Estilização suave para scroll horizontal de cores no mobile */
-    .no-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-    .no-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-  </style>
-</head>
-<body class="h-full w-full overflow-hidden flex flex-col relative bg-slate-950 text-slate-100">
+        <div class="overflow-hidden pr-1">
+          <div class="flex items-center gap-2">
+            <span
+              class="text-xs sm:text-sm font-extrabold tracking-tight text-white flex items-center gap-1.5"
+            >
+              G-Lab <span class="text-cyan-400">Studio 3D</span>
+            </span>
+          </div>
 
-  <!-- Viewport 3D Principal -->
-  <div id="viewport-container" class="absolute inset-0 w-full h-full z-0 cursor-grab active:cursor-grabbing"></div>
-
-  <!-- Header Superior com Branding Oficial G-Lab Studio 3D (Sem contagem de polígonos) -->
-  <header class="absolute top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 z-20 flex items-start justify-between pointer-events-none gap-2">
-    
-    <!-- Branding da Loja + Status da Peça -->
-    <div class="glass-panel rounded-2xl p-2.5 sm:px-4 sm:py-3 flex items-center gap-3 pointer-events-auto max-w-[78vw] sm:max-w-lg">
-      
-      <!-- Logotipo G-Lab Studio 3D -->
-      <div id="brand-logo-container" class="relative group shrink-0">
-        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-cyan-500 via-sky-600 to-slate-900 p-[1.5px] shadow-lg shadow-cyan-500/20 flex items-center justify-center">
-          <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center overflow-hidden">
-            <!-- Para usar sua imagem, descomente a linha abaixo e insira a URL da imagem: -->
-            <!-- <img src="URL_DA_SUA_LOGO.png" alt="G-Lab Studio 3D" class="w-full h-full object-cover"> -->
-            <svg class="w-6 h-6 text-cyan-400 drop-shadow-[0_0_6px_rgba(6,182,212,0.8)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 2L3 7l9 5 9-5-9-5z"></path>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12l9 5 9-5"></path>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 17l9 5 9-5"></path>
-              <circle cx="12" cy="7" r="1.5" fill="#22d3ee" stroke="none"></circle>
-            </svg>
+          <div class="flex items-center gap-2 mt-0.5">
+            <div
+              id="status-dot"
+              class="h-2 w-2 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+            ></div>
+            <p
+              id="model-title"
+              class="text-[11px] sm:text-xs text-slate-300 font-medium truncate max-w-[170px] sm:max-w-xs"
+            >
+              Aguardando peça...
+            </p>
           </div>
         </div>
       </div>
 
-      <!-- Textos da Loja e Status -->
-      <div class="overflow-hidden pr-1">
-        <div class="flex items-center gap-2">
-          <span class="text-xs sm:text-sm font-extrabold tracking-tight text-white flex items-center gap-1.5">
-            G-Lab <span class="text-cyan-400">Studio 3D</span>
-          </span>
-        </div>
-        
-        <div class="flex items-center gap-2 mt-0.5">
-          <div id="status-dot" class="h-2 w-2 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_6px_rgba(52,211,153,0.8)]"></div>
-          <p id="model-title" class="text-[11px] sm:text-xs text-slate-300 font-medium truncate max-w-[170px] sm:max-w-xs">
-            Aguardando peça...
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Botões de Ação Topo Direito -->
-    <div class="flex items-center gap-2 pointer-events-auto">
-      <!-- Botão Google Drive -->
-      <button id="btn-open-modal" title="Carregar modelo via Google Drive" class="glass-panel rounded-xl px-3 py-2 text-xs font-semibold text-slate-200 hover:text-white hover:border-cyan-500/40 transition-all flex items-center gap-1.5 active:scale-95 shadow-md">
-        <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
-        </svg>
-        <span class="hidden sm:inline">Google Drive</span>
-      </button>
-
-      <!-- Botão Peça Demonstrativa -->
-      <button id="btn-demo" title="Carregar Amostra Técnica" class="glass-panel rounded-xl px-3 py-2 text-xs font-semibold text-slate-200 hover:text-white hover:border-cyan-500/40 transition-all flex items-center gap-1.5 active:scale-95 shadow-md">
-        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
-        </svg>
-        <span class="hidden md:inline">Amostra</span>
-      </button>
-
-      <!-- Botão Ajuda / Instruções -->
-      <button id="btn-help" title="Controles e Instruções" class="glass-panel rounded-xl p-2.5 text-slate-300 hover:text-white hover:border-cyan-500/40 transition-all active:scale-95 shadow-md">
-        <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-      </button>
-    </div>
-  </header>
-
-  <!-- Card Lateral de Cotas Milimétricas Reais: X (Largura), Y (Profundidade), Z (Altura) -->
-  <aside id="dims-hud" class="absolute top-20 left-3 sm:top-20 sm:left-4 z-10 glass-panel rounded-2xl p-3 sm:p-3.5 text-slate-300 max-w-[230px] hidden pointer-events-auto">
-    <div class="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-1.5 mb-2">
-      <span class="text-[10px] font-semibold text-slate-400 tracking-wider uppercase">Dimensões Reais</span>
-      <span class="text-[9px] font-mono-tech px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-semibold border border-cyan-500/20">1:1 mm</span>
-    </div>
-    <div class="grid grid-cols-3 gap-1.5 font-mono-tech text-center">
-      <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
-        <div class="text-[9px] text-rose-400 font-semibold">X (Larg)</div>
-        <div id="dim-x" class="text-xs font-semibold text-slate-100 mt-0.5">--</div>
-      </div>
-      <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
-        <div class="text-[9px] text-cyan-400 font-semibold">Y (Prof)</div>
-        <div id="dim-y" class="text-xs font-semibold text-slate-100 mt-0.5">--</div>
-      </div>
-      <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
-        <div class="text-[9px] text-emerald-400 font-semibold">Z (Alt)</div>
-        <div id="dim-z" class="text-xs font-semibold text-slate-100 mt-0.5">--</div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- Toast de Notificações -->
-  <div id="toast" class="hidden absolute top-20 left-1/2 -translate-x-1/2 z-50 glass-panel text-xs text-slate-200 px-4 py-3 rounded-xl flex items-center gap-3 transition-all max-w-sm border-slate-700 shadow-2xl">
-    <div id="toast-icon"></div>
-    <div class="flex-1">
-      <span id="toast-title" class="font-semibold block text-slate-100">Informação</span>
-      <span id="toast-msg" class="text-slate-300 text-[11px] leading-relaxed"></span>
-    </div>
-  </div>
-
-  <!-- Modal Google Drive & Gerador de Links Compartilháveis -->
-  <div id="modal-drive" class="hidden absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass-panel max-w-md w-full p-5 sm:p-6 rounded-2xl relative shadow-2xl border border-slate-800">
-      
-      <!-- Fechar Modal -->
-      <button id="btn-close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-        </svg>
-      </button>
-
-      <!-- Título do Modal -->
-      <div class="flex items-center gap-3 mb-4">
-        <div class="p-2.5 bg-cyan-500/10 rounded-xl text-cyan-400 border border-cyan-500/20">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-          </svg>
-        </div>
-        <div>
-          <h2 class="text-sm sm:text-base font-bold text-white">Carregar Peça do Google Drive</h2>
-          <p class="text-xs text-slate-400">G-Lab Studio 3D • Pipeline de Inspeção</p>
-        </div>
-      </div>
-
-      <!-- Campo de Entrada -->
-      <div class="space-y-3">
-        <div>
-          <label for="drive-input" class="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-            Link Completo ou ID do Arquivo STL
-          </label>
-          <input 
-            type="text" 
-            id="drive-input" 
-            placeholder="Ex: 1tX8B_yK9... ou https://drive.google.com/file/d/..."
-            class="w-full glass-input rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all font-mono-tech"
+      <!-- Botões de Ação Topo Direito -->
+      <div class="flex items-center gap-2 pointer-events-auto">
+        <!-- Gerador de Links para Clientes -->
+        <button
+          id="btn-open-share"
+          title="Gerar link de modelo para cliente"
+          class="glass-panel rounded-xl px-3 py-2 text-xs font-semibold text-slate-200 hover:text-white hover:border-cyan-500/40 transition-all flex items-center gap-1.5 active:scale-95 shadow-md"
+        >
+          <svg
+            class="w-4 h-4 text-cyan-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-        </div>
-
-        <!-- Instruções de Permissão -->
-        <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2.5 text-[11px] text-amber-200/90 leading-relaxed">
-          <svg class="w-4 h-4 text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            ></path>
           </svg>
-          <span>
-            <strong>Atenção:</strong> Configure o arquivo no Google Drive como: <em>"Qualquer pessoa com o link"</em> (Leitor) para permitir a renderização da peça.
-          </span>
-        </div>
+          <span class="hidden sm:inline">Gerar Link</span>
+        </button>
 
-        <!-- Ações do Modal -->
-        <div class="flex flex-col sm:flex-row gap-2 pt-2">
-          <button id="btn-load-drive" class="flex-1 bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-slate-950 font-bold text-xs py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-500/25 active:scale-98">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+        <!-- Upload Local / Testar Arquivo -->
+        <label
+          for="local-file-input"
+          title="Testar arquivo STL local do computador/celular"
+          class="glass-panel rounded-xl px-3 py-2 text-xs font-semibold text-slate-200 hover:text-white hover:border-cyan-500/40 transition-all flex items-center gap-1.5 active:scale-95 shadow-md cursor-pointer"
+        >
+          <svg
+            class="w-4 h-4 text-emerald-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+            ></path>
+          </svg>
+          <span class="hidden md:inline">Abrir STL</span>
+          <input
+            type="file"
+            id="local-file-input"
+            accept=".stl"
+            class="hidden"
+          />
+        </label>
+
+        <!-- Botão Amostra -->
+        <button
+          id="btn-demo"
+          title="Carregar Peça de Demonstração"
+          class="glass-panel rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:border-cyan-500/40 transition-all flex items-center gap-1 active:scale-95 shadow-md"
+        >
+          <svg
+            class="w-4 h-4 text-amber-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+            ></path>
+          </svg>
+          <span class="hidden md:inline">Amostra</span>
+        </button>
+
+        <!-- Botão Ajuda -->
+        <button
+          id="btn-help"
+          title="Instruções de Navegação"
+          class="glass-panel rounded-xl p-2.5 text-slate-300 hover:text-white hover:border-cyan-500/40 transition-all active:scale-95 shadow-md"
+        >
+          <svg
+            class="w-4 h-4 text-cyan-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Card Lateral de Cotas Milimétricas: X (Largura), Y (Profundidade), Z (Altura) -->
+    <aside
+      id="dims-hud"
+      class="absolute top-20 left-3 sm:top-20 sm:left-4 z-10 glass-panel rounded-2xl p-3 sm:p-3.5 text-slate-300 max-w-[240px] hidden pointer-events-auto"
+    >
+      <div
+        class="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-1.5 mb-2"
+      >
+        <span
+          class="text-[10px] font-semibold text-slate-400 tracking-wider uppercase"
+          >Dimensões Reais</span
+        >
+        <span
+          class="text-[9px] font-mono-tech px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-semibold border border-cyan-500/20"
+          >1:1 mm</span
+        >
+      </div>
+      <div class="grid grid-cols-3 gap-1.5 font-mono-tech text-center">
+        <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+          <div class="text-[9px] text-rose-400 font-semibold">X (Larg)</div>
+          <div id="dim-x" class="text-xs font-semibold text-slate-100 mt-0.5">
+            --
+          </div>
+        </div>
+        <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+          <div class="text-[9px] text-cyan-400 font-semibold">Y (Prof)</div>
+          <div id="dim-y" class="text-xs font-semibold text-slate-100 mt-0.5">
+            --
+          </div>
+        </div>
+        <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+          <div class="text-[9px] text-emerald-400 font-semibold">Z (Alt)</div>
+          <div id="dim-z" class="text-xs font-semibold text-slate-100 mt-0.5">
+            --
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Toast de Notificações -->
+    <div
+      id="toast"
+      class="hidden absolute top-20 left-1/2 -translate-x-1/2 z-50 glass-panel text-xs text-slate-200 px-4 py-3 rounded-xl flex items-center gap-3 transition-all max-w-sm border-slate-700 shadow-2xl"
+    >
+      <div id="toast-icon"></div>
+      <div class="flex-1">
+        <span id="toast-title" class="font-semibold block text-slate-100"
+          >Informação</span
+        >
+        <span
+          id="toast-msg"
+          class="text-slate-300 text-[11px] leading-relaxed"
+        ></span>
+      </div>
+    </div>
+
+    <!-- Modal Gerador de Link Direto (Sem Google Drive) -->
+    <div
+      id="modal-share"
+      class="hidden absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+    >
+      <div
+        class="glass-panel max-w-md w-full p-5 sm:p-6 rounded-2xl relative shadow-2xl border border-slate-800"
+      >
+        <button
+          id="btn-close-share"
+          class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            ></path>
+          </svg>
+        </button>
+
+        <div class="flex items-center gap-3 mb-4">
+          <div
+            class="p-2.5 bg-cyan-500/10 rounded-xl text-cyan-400 border border-cyan-500/20"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+              ></path>
             </svg>
-            Visualizar Modelo
-          </button>
+          </div>
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-white">
+              Gerador de Link para Cliente
+            </h2>
+            <p class="text-xs text-slate-400">
+              G-Lab Studio 3D • Compartilhamento Direto
+            </p>
+          </div>
+        </div>
 
-          <button id="btn-copy-client-link" class="glass-panel hover:bg-slate-800 text-slate-200 text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-98 border border-slate-700">
-            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-            </svg>
-            Copiar Link p/ Cliente
-          </button>
+        <div class="space-y-3.5">
+          <div>
+            <label
+              for="share-filename-input"
+              class="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1.5"
+            >
+              Nome do arquivo no GitHub (ou URL externa)
+            </label>
+            <input
+              type="text"
+              id="share-filename-input"
+              placeholder="Ex: peca1.stl ou modelos/engrenagem.stl"
+              class="w-full glass-input rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all font-mono-tech"
+            />
+            <p class="text-[10px] text-slate-400 mt-1">
+              Basta enviar o arquivo .stl para o repositório do GitHub e digitar
+              o nome aqui.
+            </p>
+          </div>
+
+          <!-- Preview da URL Resultante -->
+          <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span
+              class="text-[10px] font-semibold text-cyan-400 uppercase tracking-wider block mb-1"
+              >URL que será enviada:</span
+            >
+            <div
+              id="share-preview-url"
+              class="text-xs text-slate-300 font-mono-tech break-all select-all"
+            >
+              --
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2 pt-1">
+            <button
+              id="btn-copy-generated"
+              class="flex-1 bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-slate-950 font-bold text-xs py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-500/25 active:scale-98"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                ></path>
+              </svg>
+              Copiar Link
+            </button>
+
+            <button
+              id="btn-open-generated"
+              class="glass-panel hover:bg-slate-800 text-slate-200 text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-98 border border-slate-700"
+            >
+              <svg
+                class="w-4 h-4 text-emerald-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                ></path>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                ></path>
+              </svg>
+              Carregar Agora
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Modal Ajuda & Controles Mobile -->
-  <div id="modal-help" class="hidden absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass-panel max-w-sm w-full p-5 rounded-2xl relative shadow-2xl border border-slate-800">
-      <button id="btn-close-help" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-        </svg>
-      </button>
-      <h3 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
-        <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-        </svg>
-        Navegação do Visualizador 3D
-      </h3>
-      <div class="space-y-2.5 text-xs text-slate-300">
-        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-          <span class="font-bold text-cyan-400 block mb-0.5">Rotação da Peça</span>
-          <span>• Celular: Arraste com 1 dedo.<br>• PC: Clique e arraste com botão esquerdo.</span>
+    <!-- Modal Ajuda & Controles -->
+    <div
+      id="modal-help"
+      class="hidden absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+    >
+      <div
+        class="glass-panel max-w-sm w-full p-5 rounded-2xl relative shadow-2xl border border-slate-800"
+      >
+        <button
+          id="btn-close-help"
+          class="absolute top-4 right-4 text-slate-400 hover:text-white p-1"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            ></path>
+          </svg>
+        </button>
+        <h3 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+          <svg
+            class="w-4 h-4 text-cyan-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+            ></path>
+          </svg>
+          Controles do Visualizador
+        </h3>
+        <div class="space-y-2.5 text-xs text-slate-300">
+          <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+            <span class="font-bold text-cyan-400 block mb-0.5">Girar Peça</span>
+            <span
+              >• Celular: Arraste com 1 dedo.<br />• PC: Clique e arraste botão
+              esquerdo.</span
+            >
+          </div>
+          <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+            <span class="font-bold text-cyan-400 block mb-0.5">Zoom</span>
+            <span
+              >• Celular: Movimento de pinça.<br />• PC: Role o scroll do
+              mouse.</span
+            >
+          </div>
+          <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+            <span class="font-bold text-cyan-400 block mb-0.5"
+              >Arrastar (Pan)</span
+            >
+            <span
+              >• Celular: Deslize com 2 dedos.<br />• PC: Botão direito +
+              arrastar.</span
+            >
+          </div>
+          <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+            <span class="font-bold text-cyan-400 block mb-0.5"
+              >Arrastar & Soltar</span
+            >
+            <span
+              >Você pode soltar qualquer arquivo .stl do seu computador direto
+              na tela para testar!</span
+            >
+          </div>
         </div>
-        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-          <span class="font-bold text-cyan-400 block mb-0.5">Zoom Preciso</span>
-          <span>• Celular: Movimento de pinça com 2 dedos.<br>• PC: Gire a roda (scroll) do mouse.</span>
+        <div
+          class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400"
+        >
+          Desenvolvido para clientes da
+          <strong class="text-cyan-300">G-Lab Studio 3D</strong>.
         </div>
-        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-          <span class="font-bold text-cyan-400 block mb-0.5">Arrastar (Pan)</span>
-          <span>• Celular: Deslize com 2 dedos juntos.<br>• PC: Clique e arraste com botão direito.</span>
-        </div>
-      </div>
-      <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400">
-        Desenvolvido para clientes da <strong class="text-cyan-300">G-Lab Studio 3D</strong>.
       </div>
     </div>
-  </div>
 
-  <!-- Overlay de Carregamento -->
-  <div id="loader-overlay" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/85 backdrop-blur-md transition-opacity duration-300">
-    <div class="relative w-16 h-16 mb-4">
-      <div class="absolute inset-0 rounded-full border-2 border-cyan-500/20"></div>
-      <div class="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"></div>
-      <div class="absolute inset-2 rounded-full border-2 border-transparent border-b-sky-400 animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
-    </div>
-    <p id="loader-title" class="text-sm font-semibold text-slate-100">Buscando arquivo 3D...</p>
-    <p id="loader-sub" class="text-xs text-slate-400 mt-1.5 font-mono-tech">Conectando ao G-Lab Pipeline</p>
-  </div>
-
-  <!-- Barra de Ferramentas Inferior (Sem botão de aramado/wireframe e com seletor de cores ampliado) -->
-  <footer class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-auto max-w-[96vw] pointer-events-none">
-    <nav class="glass-panel rounded-2xl p-1.5 sm:p-2 flex items-center justify-center gap-1.5 pointer-events-auto">
-      
-      <!-- Auto Rotação -->
-      <button id="btn-toggle-spin" title="Iniciar/Pausar Giro Automático" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 active:scale-95 transition-all">
-        <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-        </svg>
-        <span class="hidden md:inline">Auto Giro</span>
-      </button>
-
-      <div class="h-4 w-[1px] bg-slate-800"></div>
-
-      <!-- Recentralizar Enquadramento -->
-      <button id="btn-reset-cam" title="Recentralizar e enquadrar a peça" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 active:scale-95 transition-all">
-        <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
-        </svg>
-        <span class="hidden md:inline">Enquadrar</span>
-      </button>
-
-      <div class="h-4 w-[1px] bg-slate-800"></div>
-
-      <!-- Grade Técnica de Chão -->
-      <button id="btn-grid" title="Exibir/Ocultar Grade Milimétrica" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 active:scale-95 transition-all">
-        <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16M6 4v16m6-16v16m6-16v16"></path>
-        </svg>
-        <span class="hidden md:inline">Grade</span>
-      </button>
-
-      <div class="h-4 w-[1px] bg-slate-800"></div>
-
-      <!-- Seletor de Cores e Resinas Expandido -->
-      <div class="flex items-center gap-1.5 px-2 py-1 bg-slate-900/90 rounded-xl border border-slate-800 overflow-x-auto max-w-[50vw] sm:max-w-none no-scrollbar">
-        <!-- Cinza Mecânico (Padrão) -->
-        <button data-color="0xd1d5db" data-rough="0.4" title="Cinza Mecânico" class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#d1d5db] ring-2 ring-cyan-400 hover:scale-110 active:scale-95 transition-all"></button>
-        <!-- Chumbo / Grafite Escuro -->
-        <button data-color="0x475569" data-rough="0.45" title="Cinza Chumbo / Grafite" class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#475569] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"></button>
-        <!-- Preto Fosco -->
-        <button data-color="0x1e293b" data-rough="0.5" title="Preto Fosco Técnico" class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#1e293b] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all border border-slate-700"></button>
-        <!-- Branco Puro Técnico -->
-        <button data-color="0xf8fafc" data-rough="0.55" title="Branco Técnico" class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#f8fafc] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"></button>
-        <!-- Azul G-Lab Industrial -->
-        <button data-color="0x06b6d4" data-rough="0.35" title="Azul G-Lab Industrial" class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#06b6d4] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"></button>
-        <!-- Laranja Protótipo -->
-        <button data-color="0xf97316" data-rough="0.35" title="Laranja Protótipo" class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#f97316] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"></button>
-        <!-- Vermelho Terracota -->
-        <button data-color="0xef4444" data-rough="0.4" title="Vermelho Terracota" class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#ef4444] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"></button>
-        <!-- Verde Militar -->
-        <button data-color="0x15803d" data-rough="0.45" title="Verde Militar" class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#15803d] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"></button>
-        <!-- Amarelo Ouro Técnico -->
-        <button data-color="0xeab308" data-rough="0.4" title="Amarelo Ouro" class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#eab308] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"></button>
+    <!-- Overlay de Carregamento -->
+    <div
+      id="loader-overlay"
+      class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/85 backdrop-blur-md transition-opacity duration-300"
+    >
+      <div class="relative w-16 h-16 mb-4">
+        <div
+          class="absolute inset-0 rounded-full border-2 border-cyan-500/20"
+        ></div>
+        <div
+          class="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin"
+        ></div>
+        <div
+          class="absolute inset-2 rounded-full border-2 border-transparent border-b-sky-400 animate-spin"
+          style="animation-direction: reverse; animation-duration: 1.5s"
+        ></div>
       </div>
+      <p id="loader-title" class="text-sm font-semibold text-slate-100">
+        Buscando arquivo 3D...
+      </p>
+      <p id="loader-sub" class="text-xs text-slate-400 mt-1.5 font-mono-tech">
+        Conectando aos servidores
+      </p>
+    </div>
 
-    </nav>
-  </footer>
+    <!-- Barra de Ferramentas Inferior (9 Cores Técnicas + Controles) -->
+    <footer
+      class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-auto max-w-[96vw] pointer-events-none"
+    >
+      <nav
+        class="glass-panel rounded-2xl p-1.5 sm:p-2 flex items-center justify-center gap-1.5 pointer-events-auto"
+      >
+        <!-- Auto Giro -->
+        <button
+          id="btn-toggle-spin"
+          title="Iniciar/Pausar Giro Automático"
+          class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 active:scale-95 transition-all"
+        >
+          <svg
+            class="w-4 h-4 text-cyan-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            ></path>
+          </svg>
+          <span class="hidden md:inline">Auto Giro</span>
+        </button>
 
-  <script>
-    // Estado Central do Visualizador G-Lab Studio 3D
-    const appState = {
-      isAutoRotating: false,
-      showGrid: true,
-      currentMesh: null,
-      currentGeometry: null,
-      initialCameraPos: new THREE.Vector3(),
-      initialTarget: new THREE.Vector3(0, 0, 0),
-      currentColor: 0xd1d5db,
-      currentRoughness: 0.4
-    };
+        <div class="h-4 w-[1px] bg-slate-800"></div>
 
-    // Referências do DOM
-    const viewport = document.getElementById('viewport-container');
-    const loaderOverlay = document.getElementById('loader-overlay');
-    const loaderTitle = document.getElementById('loader-title');
-    const loaderSub = document.getElementById('loader-sub');
-    const modelTitle = document.getElementById('model-title');
-    const statusDot = document.getElementById('status-dot');
-    const dimsHud = document.getElementById('dims-hud');
-    const dimX = document.getElementById('dim-x');
-    const dimY = document.getElementById('dim-y');
-    const dimZ = document.getElementById('dim-z');
-    const toast = document.getElementById('toast');
-    const toastTitle = document.getElementById('toast-title');
-    const toastMsg = document.getElementById('toast-msg');
-    const toastIcon = document.getElementById('toast-icon');
+        <!-- Recentralizar Enquadramento -->
+        <button
+          id="btn-reset-cam"
+          title="Recentralizar e enquadrar a peça"
+          class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 active:scale-95 transition-all"
+        >
+          <svg
+            class="w-4 h-4 text-cyan-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+            ></path>
+          </svg>
+          <span class="hidden md:inline">Enquadrar</span>
+        </button>
 
-    // Modais e Inputs
-    const modalDrive = document.getElementById('modal-drive');
-    const btnOpenModal = document.getElementById('btn-open-modal');
-    const btnCloseModal = document.getElementById('btn-close-modal');
-    const driveInput = document.getElementById('drive-input');
-    const btnLoadDrive = document.getElementById('btn-load-drive');
-    const btnCopyClientLink = document.getElementById('btn-copy-client-link');
-    const modalHelp = document.getElementById('modal-help');
-    const btnHelp = document.getElementById('btn-help');
-    const btnCloseHelp = document.getElementById('btn-close-help');
-    const btnDemo = document.getElementById('btn-demo');
+        <div class="h-4 w-[1px] bg-slate-800"></div>
 
-    // Notificações Toast
-    let toastTimeout = null;
-    function notify(title, message, isError = false) {
-      if (toastTimeout) clearTimeout(toastTimeout);
-      toastTitle.textContent = title;
-      toastMsg.textContent = message;
-      toastIcon.innerHTML = isError 
-        ? `<svg class="w-5 h-5 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`
-        : `<svg class="w-5 h-5 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
-      
-      toast.classList.remove('hidden');
-      toastTimeout = setTimeout(() => {
-        toast.classList.add('hidden');
-      }, 5000);
-    }
+        <!-- Grade Técnica de Chão -->
+        <button
+          id="btn-grid"
+          title="Exibir/Ocultar Grade Milimétrica"
+          class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 active:scale-95 transition-all"
+        >
+          <svg
+            class="w-4 h-4 text-cyan-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16M6 4v16m6-16v16m6-16v16"
+            ></path>
+          </svg>
+          <span class="hidden md:inline">Grade</span>
+        </button>
 
-    function showLoader(title, subtitle) {
-      loaderTitle.textContent = title;
-      loaderSub.textContent = subtitle;
-      loaderOverlay.classList.remove('opacity-0', 'pointer-events-none');
-    }
+        <div class="h-4 w-[1px] bg-slate-800"></div>
 
-    function hideLoader() {
-      loaderOverlay.classList.add('opacity-0', 'pointer-events-none');
-    }
+        <!-- Seletor de 9 Cores Técnicas -->
+        <div
+          class="flex items-center gap-1.5 px-2 py-1 bg-slate-900/90 rounded-xl border border-slate-800 overflow-x-auto max-w-[50vw] sm:max-w-none no-scrollbar"
+        >
+          <!-- Cinza Mecânico (Padrão) -->
+          <button
+            data-color="0xd1d5db"
+            data-rough="0.4"
+            title="Cinza Mecânico"
+            class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#d1d5db] ring-2 ring-cyan-400 hover:scale-110 active:scale-95 transition-all"
+          ></button>
+          <!-- Chumbo / Grafite Escuro -->
+          <button
+            data-color="0x475569"
+            data-rough="0.45"
+            title="Cinza Chumbo / Grafite"
+            class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#475569] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"
+          ></button>
+          <!-- Preto Fosco -->
+          <button
+            data-color="0x1e293b"
+            data-rough="0.5"
+            title="Preto Fosco Técnico"
+            class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#1e293b] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all border border-slate-700"
+          ></button>
+          <!-- Branco Puro Técnico -->
+          <button
+            data-color="0xf8fafc"
+            data-rough="0.55"
+            title="Branco Técnico"
+            class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#f8fafc] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"
+          ></button>
+          <!-- Azul G-Lab Industrial -->
+          <button
+            data-color="0x06b6d4"
+            data-rough="0.35"
+            title="Azul G-Lab Industrial"
+            class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#06b6d4] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"
+          ></button>
+          <!-- Laranja Protótipo -->
+          <button
+            data-color="0xf97316"
+            data-rough="0.35"
+            title="Laranja Protótipo"
+            class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#f97316] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"
+          ></button>
+          <!-- Vermelho Terracota -->
+          <button
+            data-color="0xef4444"
+            data-rough="0.4"
+            title="Vermelho Terracota"
+            class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#ef4444] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"
+          ></button>
+          <!-- Verde Militar -->
+          <button
+            data-color="0x15803d"
+            data-rough="0.45"
+            title="Verde Militar"
+            class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#15803d] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"
+          ></button>
+          <!-- Amarelo Ouro Técnico -->
+          <button
+            data-color="0xeab308"
+            data-rough="0.4"
+            title="Amarelo Ouro"
+            class="mat-btn shrink-0 w-5 h-5 rounded-full bg-[#eab308] ring-2 ring-transparent hover:scale-110 active:scale-95 transition-all"
+          ></button>
+        </div>
+      </nav>
+    </footer>
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x070b14);
-    scene.fog = new THREE.FogExp2(0x070b14, 0.0012);
+    <script>
+      // Estado Central
+      const appState = {
+        isAutoRotating: false,
+        showGrid: true,
+        currentMesh: null,
+        currentGeometry: null,
+        initialCameraPos: new THREE.Vector3(),
+        initialTarget: new THREE.Vector3(0, 0, 0),
+        currentColor: 0xd1d5db,
+        currentRoughness: 0.4,
+      };
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.18;
-    viewport.appendChild(renderer.domElement);
+      // Referências DOM
+      const viewport = document.getElementById("viewport-container");
+      const dropOverlay = document.getElementById("drop-overlay");
+      const loaderOverlay = document.getElementById("loader-overlay");
+      const loaderTitle = document.getElementById("loader-title");
+      const loaderSub = document.getElementById("loader-sub");
+      const modelTitle = document.getElementById("model-title");
+      const statusDot = document.getElementById("status-dot");
+      const dimsHud = document.getElementById("dims-hud");
+      const dimX = document.getElementById("dim-x");
+      const dimY = document.getElementById("dim-y");
+      const dimZ = document.getElementById("dim-z");
+      const toast = document.getElementById("toast");
+      const toastTitle = document.getElementById("toast-title");
+      const toastMsg = document.getElementById("toast-msg");
+      const toastIcon = document.getElementById("toast-icon");
 
-    // Controles Orbitais
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.07;
-    controls.screenSpacePanning = true;
+      // Modais e Botões
+      const modalShare = document.getElementById("modal-share");
+      const btnOpenShare = document.getElementById("btn-open-share");
+      const btnCloseShare = document.getElementById("btn-close-share");
+      const shareFilenameInput = document.getElementById(
+        "share-filename-input",
+      );
+      const sharePreviewUrl = document.getElementById("share-preview-url");
+      const btnCopyGenerated = document.getElementById("btn-copy-generated");
+      const btnOpenGenerated = document.getElementById("btn-open-generated");
+      const localFileInput = document.getElementById("local-file-input");
+      const modalHelp = document.getElementById("modal-help");
+      const btnHelp = document.getElementById("btn-help");
+      const btnCloseHelp = document.getElementById("btn-close-help");
+      const btnDemo = document.getElementById("btn-demo");
 
-    // Iluminação de Estúdio Técnico
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
-    scene.add(ambientLight);
+      // Notificações Toast
+      let toastTimeout = null;
+      function notify(title, message, isError = false) {
+        if (toastTimeout) clearTimeout(toastTimeout);
+        toastTitle.textContent = title;
+        toastMsg.textContent = message;
+        toastIcon.innerHTML = isError
+          ? `<svg class="w-5 h-5 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`
+          : `<svg class="w-5 h-5 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.95);
-    keyLight.position.set(250, 350, 250);
-    keyLight.castShadow = true;
-    scene.add(keyLight);
+        toast.classList.remove("hidden");
+        toastTimeout = setTimeout(() => {
+          toast.classList.add("hidden");
+        }, 4500);
+      }
 
-    const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.55);
-    fillLight.position.set(-250, 180, -250);
-    scene.add(fillLight);
+      function showLoader(title, subtitle = "Processando malha 3D") {
+        loaderTitle.textContent = title;
+        loaderSub.textContent = subtitle;
+        loaderOverlay.classList.remove("opacity-0", "pointer-events-none");
+      }
 
-    const rimLight = new THREE.DirectionalLight(0x06b6d4, 0.4);
-    rimLight.position.set(0, -150, 180);
-    scene.add(rimLight);
+      function hideLoader() {
+        loaderOverlay.classList.add("opacity-0", "pointer-events-none");
+      }
 
-    // Grade do Piso
-    let gridHelper = new THREE.GridHelper(300, 30, 0x06b6d4, 0x1e293b);
-    gridHelper.position.y = 0;
-    scene.add(gridHelper);
+      // Cena Three.js
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x070b14);
+      scene.fog = new THREE.FogExp2(0x070b14, 0.0012);
 
-    // Material Sólido Padrão (Sem wireframe)
-    const material = new THREE.MeshStandardMaterial({
-      color: appState.currentColor,
-      roughness: appState.currentRoughness,
-      metalness: 0.1,
-      wireframe: false,
-      side: THREE.DoubleSide
-    });
+      const camera = new THREE.PerspectiveCamera(
+        45,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        10000,
+      );
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        powerPreference: "high-performance",
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.18;
+      viewport.appendChild(renderer.domElement);
 
-    const stlLoader = new THREE.STLLoader();
+      // Controles Orbitais
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.07;
+      controls.screenSpacePanning = true;
 
-    function fitModelToScene(geometry) {
-      geometry.computeBoundingBox();
-      geometry.computeBoundingSphere();
+      // Iluminação Técnica de Estúdio
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+      scene.add(ambientLight);
 
-      const box = geometry.boundingBox;
-      const size = new THREE.Vector3();
-      box.getSize(size);
+      const keyLight = new THREE.DirectionalLight(0xffffff, 0.95);
+      keyLight.position.set(250, 350, 250);
+      keyLight.castShadow = true;
+      scene.add(keyLight);
 
-      // Mapeamento de Cotas conforme solicitado:
-      // X = Largura
-      // Y = Profundidade
-      // Z = Altura
-      dimX.textContent = `${size.x.toFixed(1)}mm`;
-      dimY.textContent = `${size.z.toFixed(1)}mm`; // Eixo de profundidade no espaço 3D (Z do Three.js) mapeado como Y (Profundidade)
-      dimZ.textContent = `${size.y.toFixed(1)}mm`; // Eixo de altura no espaço 3D (Y do Three.js) mapeado como Z (Altura)
-      dimsHud.classList.remove('hidden');
+      const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.55);
+      fillLight.position.set(-250, 180, -250);
+      scene.add(fillLight);
 
-      // Centraliza em X e Z, assentando a base na grade (Y = 0)
-      const center = new THREE.Vector3();
-      box.getCenter(center);
-      geometry.translate(-center.x, -box.min.y, -center.z);
+      const rimLight = new THREE.DirectionalLight(0x06b6d4, 0.4);
+      rimLight.position.set(0, -150, 180);
+      scene.add(rimLight);
 
-      geometry.computeBoundingBox();
-      geometry.computeBoundingSphere();
-
-      const sphere = geometry.boundingSphere;
-      const radius = Math.max(sphere.radius, 10);
-
-      // Redimensiona a grade proporcionalmente ao tamanho da peça
-      scene.remove(gridHelper);
-      const gridSize = Math.max(radius * 3.5, 80);
-      gridHelper = new THREE.GridHelper(gridSize, 28, 0x06b6d4, 0x1e293b);
+      // Grade do Piso
+      let gridHelper = new THREE.GridHelper(300, 30, 0x06b6d4, 0x1e293b);
       gridHelper.position.y = 0;
-      gridHelper.visible = appState.showGrid;
       scene.add(gridHelper);
 
-      // Ajusta posição da câmera
-      const fov = camera.fov * (Math.PI / 180);
-      const distance = Math.abs(radius / Math.sin(fov / 2)) * 1.35;
-      
-      const targetY = size.y * 0.45;
-      appState.initialTarget.set(0, targetY, 0);
-      appState.initialCameraPos.set(distance * 0.85, distance * 0.8, distance * 1.15);
+      // Material Sólido Padrão
+      const material = new THREE.MeshStandardMaterial({
+        color: appState.currentColor,
+        roughness: appState.currentRoughness,
+        metalness: 0.1,
+        wireframe: false,
+        side: THREE.DoubleSide,
+      });
 
-      camera.position.copy(appState.initialCameraPos);
-      camera.lookAt(appState.initialTarget);
-      camera.near = Math.max(distance / 500, 0.1);
-      camera.far = distance * 50;
-      camera.updateProjectionMatrix();
+      const stlLoader = new THREE.STLLoader();
 
-      controls.target.copy(appState.initialTarget);
-      controls.update();
+      function fitModelToScene(geometry) {
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
 
-      keyLight.position.set(distance, distance * 1.3, distance);
-      fillLight.position.set(-distance, distance * 0.8, -distance);
-    }
+        const box = geometry.boundingBox;
+        const size = new THREE.Vector3();
+        box.getSize(size);
 
-    function setGeometry(geometry, displayName) {
-      if (appState.currentMesh) {
-        scene.remove(appState.currentMesh);
-        if (appState.currentGeometry) appState.currentGeometry.dispose();
+        // Cotas Milimétricas:
+        // X = Largura
+        // Y = Profundidade (eixo Z do Three.js)
+        // Z = Altura (eixo Y do Three.js)
+        dimX.textContent = `${size.x.toFixed(1)}mm`;
+        dimY.textContent = `${size.z.toFixed(1)}mm`;
+        dimZ.textContent = `${size.y.toFixed(1)}mm`;
+        dimsHud.classList.remove("hidden");
+
+        // Centraliza a peça em X e Z e apoia a base no chão (Y = 0)
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+        geometry.translate(-center.x, -box.min.y, -center.z);
+
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+
+        const sphere = geometry.boundingSphere;
+        const radius = Math.max(sphere.radius, 10);
+
+        // Redimensiona a grade proporcionalmente
+        scene.remove(gridHelper);
+        const gridSize = Math.max(radius * 3.5, 80);
+        gridHelper = new THREE.GridHelper(gridSize, 28, 0x06b6d4, 0x1e293b);
+        gridHelper.position.y = 0;
+        gridHelper.visible = appState.showGrid;
+        scene.add(gridHelper);
+
+        // Posiciona câmera para enquadramento ideal
+        const fov = camera.fov * (Math.PI / 180);
+        const distance = Math.abs(radius / Math.sin(fov / 2)) * 1.35;
+
+        const targetY = size.y * 0.45;
+        appState.initialTarget.set(0, targetY, 0);
+        appState.initialCameraPos.set(
+          distance * 0.85,
+          distance * 0.8,
+          distance * 1.15,
+        );
+
+        camera.position.copy(appState.initialCameraPos);
+        camera.lookAt(appState.initialTarget);
+        camera.near = Math.max(distance / 500, 0.1);
+        camera.far = distance * 50;
+        camera.updateProjectionMatrix();
+
+        controls.target.copy(appState.initialTarget);
+        controls.update();
+
+        keyLight.position.set(distance, distance * 1.3, distance);
+        fillLight.position.set(-distance, distance * 0.8, -distance);
       }
 
-      geometry.computeVertexNormals();
-      appState.currentGeometry = geometry;
-      appState.currentMesh = new THREE.Mesh(geometry, material);
-      appState.currentMesh.castShadow = true;
-      appState.currentMesh.receiveShadow = true;
-      scene.add(appState.currentMesh);
+      function setGeometry(geometry, displayName) {
+        if (appState.currentMesh) {
+          scene.remove(appState.currentMesh);
+          if (appState.currentGeometry) appState.currentGeometry.dispose();
+        }
 
-      fitModelToScene(geometry);
+        geometry.computeVertexNormals();
+        appState.currentGeometry = geometry;
+        appState.currentMesh = new THREE.Mesh(geometry, material);
+        appState.currentMesh.castShadow = true;
+        appState.currentMesh.receiveShadow = true;
+        scene.add(appState.currentMesh);
 
-      // Apenas o título da peça no cabeçalho (sem contagem de polígonos)
-      modelTitle.textContent = displayName;
-      statusDot.className = "h-2 w-2 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_6px_rgba(52,211,153,0.8)]";
+        fitModelToScene(geometry);
 
-      hideLoader();
-    }
+        modelTitle.textContent = displayName;
+        statusDot.className =
+          "h-2 w-2 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_6px_rgba(52,211,153,0.8)]";
 
-    function extractGoogleDriveId(input) {
-      if (!input) return null;
-      const trimmed = input.trim();
-
-      // Se for apenas o ID
-      if (/^[a-zA-Z0-9_-]{25,}$/.test(trimmed)) {
-        return trimmed;
+        hideLoader();
       }
 
-      // Se for link do Drive (/file/d/ID/...)
-      const matchFile = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (matchFile && matchFile[1]) {
-        return matchFile[1];
-      }
-
-      // Se for link com parâmetro ?id=ID
-      const matchParam = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-      if (matchParam && matchParam[1]) {
-        return matchParam[1];
-      }
-
-      return null;
-    }
-
-    async function loadGoogleDriveModel(driveId) {
-      showLoader("Buscando no Google Drive...", "Conectando aos servidores");
-      statusDot.className = "h-2 w-2 rounded-full bg-amber-400 shrink-0 shadow-[0_0_6px_rgba(251,191,36,0.8)]";
-      modelTitle.textContent = `Carregando ID: ${driveId.substring(0, 8)}...`;
-
-      const directUrl = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
-      const directUrlAlt = `https://drive.google.com/uc?export=download&id=${driveId}`;
-
-      const endpoints = [
-        directUrl,
-        `https://corsproxy.io/?url=${encodeURIComponent(directUrl)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrlAlt)}`
-      ];
-
-      for (let i = 0; i < endpoints.length; i++) {
-        const endpoint = endpoints[i];
+      function parseStlBuffer(arrayBuffer, displayName) {
         try {
-          loaderSub.textContent = `Tentativa de conexão (${i + 1}/${endpoints.length})...`;
-          const response = await fetch(endpoint);
+          const geometry = stlLoader.parse(arrayBuffer);
+          setGeometry(geometry, displayName);
+          notify("G-Lab Studio 3D", `Modelo "${displayName}" renderizado!`);
+        } catch (err) {
+          console.error(err);
+          hideLoader();
+          statusDot.className =
+            "h-2 w-2 rounded-full bg-rose-500 shrink-0 shadow-[0_0_6px_rgba(244,63,94,0.8)]";
+          notify(
+            "Erro ao decodificar",
+            "O arquivo não pôde ser interpretado como STL válido.",
+            true,
+          );
+        }
+      }
 
+      async function loadModelFromUrl(url) {
+        const cleanUrl = url.trim();
+        const filename =
+          cleanUrl.split("/").pop().split("?")[0] || "Modelo.stl";
+
+        showLoader("Carregando modelo...", filename);
+        statusDot.className =
+          "h-2 w-2 rounded-full bg-amber-400 shrink-0 shadow-[0_0_6px_rgba(251,191,36,0.8)]";
+        modelTitle.textContent = `Buscando ${filename}...`;
+
+        try {
+          const response = await fetch(cleanUrl);
           if (!response.ok) {
-            throw new Error(`Status HTTP: ${response.status}`);
+            throw new Error(
+              `Arquivo não encontrado (Status HTTP: ${response.status})`,
+            );
           }
 
           const arrayBuffer = await response.arrayBuffer();
-          
-          // Validação rápida: se retornou página HTML de login
-          const firstBytes = new Uint8Array(arrayBuffer.slice(0, 50));
-          const textHeader = String.fromCharCode.apply(null, firstBytes).toLowerCase();
-          
-          if (textHeader.includes('<!doctype') || textHeader.includes('<html')) {
-            throw new Error("O Google Drive retornou uma página de permissão. Certifique-se de que o arquivo está compartilhado como 'Qualquer pessoa com o link'.");
-          }
-
-          loaderSub.textContent = "Decodificando malha STL...";
-          const geometry = stlLoader.parse(arrayBuffer);
-
-          setGeometry(geometry, `Peça_${driveId.substring(0, 8)}.stl`);
-          notify("G-Lab Studio 3D", "Modelo carregado com sucesso!");
-          return;
-
+          parseStlBuffer(arrayBuffer, filename);
         } catch (err) {
-          console.warn(`Tentativa ${i + 1} falhou:`, err.message);
+          console.error("Falha ao carregar arquivo:", err);
+          hideLoader();
+          statusDot.className =
+            "h-2 w-2 rounded-full bg-rose-500 shrink-0 shadow-[0_0_6px_rgba(244,63,94,0.8)]";
+          notify(
+            "Erro ao carregar",
+            `Não foi possível carregar "${filename}". Verifique se o nome do arquivo está correto no repositório.`,
+            true,
+          );
+          loadProceduralDemo();
         }
       }
 
-      hideLoader();
-      statusDot.className = "h-2 w-2 rounded-full bg-rose-500 shrink-0 shadow-[0_0_6px_rgba(244,63,94,0.8)]";
-      notify("Erro no Google Drive", "Verifique se o arquivo está compartilhado como público (Leitor).", true);
-      loadProceduralDemo();
-    }
-
-    function loadProceduralDemo() {
-      showLoader("Carregando amostra técnica G-Lab...");
-      const geom = new THREE.CylinderGeometry(28, 42, 55, 48, 1, false);
-      setGeometry(geom, "Amostra_Flange_M42.stl");
-    }
-
-    btnOpenModal.addEventListener('click', () => modalDrive.classList.remove('hidden'));
-    btnCloseModal.addEventListener('click', () => modalDrive.classList.add('hidden'));
-    modalDrive.addEventListener('click', (e) => {
-      if (e.target === modalDrive) modalDrive.classList.add('hidden');
-    });
-
-    btnLoadDrive.addEventListener('click', () => {
-      const rawInput = driveInput.value;
-      const extractedId = extractGoogleDriveId(rawInput);
-
-      if (!extractedId) {
-        notify("Entrada Inválida", "Insira um ID ou Link válido do Google Drive.", true);
-        return;
-      }
-
-      modalDrive.classList.add('hidden');
-      loadGoogleDriveModel(extractedId);
-    });
-
-    btnCopyClientLink.addEventListener('click', () => {
-      const rawInput = driveInput.value;
-      const extractedId = extractGoogleDriveId(rawInput);
-
-      if (!extractedId) {
-        notify("Atenção", "Insira o ID ou Link do arquivo primeiro para gerar a URL.", true);
-        return;
-      }
-
-      const urlBase = window.location.origin + window.location.pathname;
-      const shareUrl = `${urlBase}?id=${extractedId}`;
-
-      const tempInput = document.createElement("input");
-      tempInput.value = shareUrl;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      try {
-        document.execCommand('copy');
-        notify("Link Copiado!", "Link direto da G-Lab Studio 3D pronto para enviar ao cliente.");
-      } catch (err) {
-        notify("Erro ao copiar", "Copie manualmente: " + shareUrl);
-      }
-      document.body.removeChild(tempInput);
-    });
-
-    btnHelp.addEventListener('click', () => modalHelp.classList.remove('hidden'));
-    btnCloseHelp.addEventListener('click', () => modalHelp.classList.add('hidden'));
-    modalHelp.addEventListener('click', (e) => {
-      if (e.target === modalHelp) modalHelp.classList.add('hidden');
-    });
-
-    btnDemo.addEventListener('click', () => {
-      loadProceduralDemo();
-    });
-
-    const btnToggleSpin = document.getElementById('btn-toggle-spin');
-    btnToggleSpin.addEventListener('click', () => {
-      appState.isAutoRotating = !appState.isAutoRotating;
-      btnToggleSpin.classList.toggle('bg-cyan-500/20', appState.isAutoRotating);
-      btnToggleSpin.classList.toggle('text-cyan-300', appState.isAutoRotating);
-    });
-
-    const btnResetCam = document.getElementById('btn-reset-cam');
-    btnResetCam.addEventListener('click', () => {
-      if (!appState.currentGeometry) return;
-      controls.target.copy(appState.initialTarget);
-      camera.position.copy(appState.initialCameraPos);
-      controls.update();
-    });
-
-    const btnGrid = document.getElementById('btn-grid');
-    btnGrid.addEventListener('click', () => {
-      appState.showGrid = !appState.showGrid;
-      gridHelper.visible = appState.showGrid;
-      btnGrid.classList.toggle('bg-cyan-500/20', !appState.showGrid);
-    });
-
-    // Seletor de Resinas e Cores Expandido
-    const matButtons = document.querySelectorAll('.mat-btn');
-    matButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        matButtons.forEach(b => b.classList.replace('ring-cyan-400', 'ring-transparent'));
-        btn.classList.replace('ring-transparent', 'ring-cyan-400');
-
-        const colorHex = parseInt(btn.getAttribute('data-color'), 16);
-        const rough = parseFloat(btn.getAttribute('data-rough'));
-        material.color.setHex(colorHex);
-        material.roughness = rough;
-      });
-    });
-
-    // Redimensionamento Responsivo do Canvas
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    });
-
-    function renderLoop() {
-      requestAnimationFrame(renderLoop);
-
-      if (appState.isAutoRotating && appState.currentMesh) {
-        appState.currentMesh.rotation.y += 0.007;
-      }
-
-      controls.update();
-      renderer.render(scene, camera);
-    }
-
-    // Inicialização ao carregar a página
-    window.onload = function () {
-      renderLoop();
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const driveParam = urlParams.get('id') || urlParams.get('drive') || urlParams.get('stl');
-
-      if (driveParam) {
-        const cleanId = extractGoogleDriveId(driveParam);
-        if (cleanId) {
-          driveInput.value = cleanId;
-          loadGoogleDriveModel(cleanId);
+      function loadLocalFile(file) {
+        if (!file || !file.name.toLowerCase().endsWith(".stl")) {
+          notify(
+            "Arquivo Inválido",
+            "Por favor, selecione um arquivo no formato .STL",
+            true,
+          );
           return;
         }
+
+        showLoader("Processando arquivo local...", file.name);
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          parseStlBuffer(e.target.result, file.name);
+        };
+        reader.onerror = function () {
+          hideLoader();
+          notify("Erro de leitura", "Falha ao ler o arquivo local.", true);
+        };
+        reader.readAsArrayBuffer(file);
       }
 
-      // Amostra inicial padrão caso abra sem parâmetros
-      loadProceduralDemo();
-    };
-  </script>
-</body>
+      function loadProceduralDemo() {
+        showLoader("Carregando amostra técnica G-Lab...");
+        const geom = new THREE.CylinderGeometry(28, 42, 55, 48, 1, false);
+        setGeometry(geom, "Amostra_Flange_M42.stl");
+      }
+
+      function updateSharePreview() {
+        let rawVal = shareFilenameInput.value.trim();
+        if (!rawVal) {
+          sharePreviewUrl.textContent =
+            "Digite o nome do arquivo para ver a URL pronta.";
+          return "";
+        }
+
+        if (!rawVal.toLowerCase().endsWith(".stl") && !rawVal.includes("?")) {
+          rawVal += ".stl";
+        }
+
+        const urlBase = window.location.origin + window.location.pathname;
+        const finalUrl = `${urlBase}?stl=${encodeURIComponent(rawVal)}`;
+        sharePreviewUrl.textContent = finalUrl;
+        return finalUrl;
+      }
+
+      shareFilenameInput.addEventListener("input", updateSharePreview);
+
+      btnOpenShare.addEventListener("click", () => {
+        modalShare.classList.remove("hidden");
+        updateSharePreview();
+        shareFilenameInput.focus();
+      });
+
+      btnCloseShare.addEventListener("click", () =>
+        modalShare.classList.add("hidden"),
+      );
+      modalShare.addEventListener("click", (e) => {
+        if (e.target === modalShare) modalShare.classList.add("hidden");
+      });
+
+      btnCopyGenerated.addEventListener("click", () => {
+        const url = updateSharePreview();
+        if (!url) {
+          notify("Atenção", "Insira o nome do arquivo antes de copiar.", true);
+          return;
+        }
+
+        const tempInput = document.createElement("input");
+        tempInput.value = url;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        try {
+          document.execCommand("copy");
+          notify("Link Copiado!", "Link direto pronto para enviar ao cliente.");
+        } catch (err) {
+          notify("Erro ao copiar", "Copie manualmente a URL acima.", true);
+        }
+        document.body.removeChild(tempInput);
+      });
+
+      btnOpenGenerated.addEventListener("click", () => {
+        const rawVal = shareFilenameInput.value.trim();
+        if (!rawVal) {
+          notify("Atenção", "Insira o nome do arquivo.", true);
+          return;
+        }
+        modalShare.classList.add("hidden");
+        loadModelFromUrl(rawVal);
+      });
+
+      // Input de Arquivo Local
+      localFileInput.addEventListener("change", (e) => {
+        if (e.target.files && e.target.files[0]) {
+          loadLocalFile(e.target.files[0]);
+        }
+      });
+
+      // Suporte a Arrastar e Soltar (Drag & Drop)
+      window.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropOverlay.classList.remove("hidden");
+      });
+
+      window.addEventListener("dragleave", (e) => {
+        if (e.clientX <= 0 || e.clientY <= 0) {
+          dropOverlay.classList.add("hidden");
+        }
+      });
+
+      window.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropOverlay.classList.add("hidden");
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+          loadLocalFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      btnHelp.addEventListener("click", () =>
+        modalHelp.classList.remove("hidden"),
+      );
+      btnCloseHelp.addEventListener("click", () =>
+        modalHelp.classList.add("hidden"),
+      );
+      modalHelp.addEventListener("click", (e) => {
+        if (e.target === modalHelp) modalHelp.classList.add("hidden");
+      });
+
+      btnDemo.addEventListener("click", () => loadProceduralDemo());
+
+      const btnToggleSpin = document.getElementById("btn-toggle-spin");
+      btnToggleSpin.addEventListener("click", () => {
+        appState.isAutoRotating = !appState.isAutoRotating;
+        btnToggleSpin.classList.toggle(
+          "bg-cyan-500/20",
+          appState.isAutoRotating,
+        );
+        btnToggleSpin.classList.toggle(
+          "text-cyan-300",
+          appState.isAutoRotating,
+        );
+      });
+
+      const btnResetCam = document.getElementById("btn-reset-cam");
+      btnResetCam.addEventListener("click", () => {
+        if (!appState.currentGeometry) return;
+        controls.target.copy(appState.initialTarget);
+        camera.position.copy(appState.initialCameraPos);
+        controls.update();
+      });
+
+      const btnGrid = document.getElementById("btn-grid");
+      btnGrid.addEventListener("click", () => {
+        appState.showGrid = !appState.showGrid;
+        gridHelper.visible = appState.showGrid;
+        btnGrid.classList.toggle("bg-cyan-500/20", !appState.showGrid);
+      });
+
+      // Seletor de Resinas e Cores (9 opções técnicas)
+      const matButtons = document.querySelectorAll(".mat-btn");
+      matButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          matButtons.forEach((b) =>
+            b.classList.replace("ring-cyan-400", "ring-transparent"),
+          );
+          btn.classList.replace("ring-transparent", "ring-cyan-400");
+
+          const colorHex = parseInt(btn.getAttribute("data-color"), 16);
+          const rough = parseFloat(btn.getAttribute("data-rough"));
+          material.color.setHex(colorHex);
+          material.roughness = rough;
+        });
+      });
+
+      // Responsividade
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      });
+
+      function renderLoop() {
+        requestAnimationFrame(renderLoop);
+
+        if (appState.isAutoRotating && appState.currentMesh) {
+          appState.currentMesh.rotation.y += 0.007;
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+      }
+
+      window.onload = function () {
+        renderLoop();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        // Suporte inteligente a múltiplos parâmetros: ?stl=, ?peca= ou ?modelo=
+        const modelParam =
+          urlParams.get("stl") ||
+          urlParams.get("peca") ||
+          urlParams.get("modelo");
+
+        if (modelParam) {
+          shareFilenameInput.value = modelParam;
+          loadModelFromUrl(modelParam);
+          return;
+        }
+
+        // Amostra inicial padrão
+        loadProceduralDemo();
+      };
+    </script>
+  </body>
 </html>
